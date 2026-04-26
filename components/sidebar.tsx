@@ -65,7 +65,7 @@ export function Sidebar({
       {/* Sidebar panel */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-[280px] flex flex-col bg-sidebar',
+          'fixed inset-y-0 left-0 z-40 flex h-dvh w-[280px] flex-col bg-sidebar',
           'transition-transform duration-300 ease-out will-change-transform',
           'md:relative md:translate-x-0 md:shadow-none md:shrink-0 md:border-r md:border-border md:h-full',
           isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
@@ -137,7 +137,7 @@ export function Sidebar({
           ))}
         </div>
 
-        <div className="p-4 border-t border-border">
+        <div className="border-t border-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           {dataMode === 'authenticated' && currentUser ? (
             <>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

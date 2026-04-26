@@ -5,6 +5,8 @@ import { ChatHandler, Message } from '@llamaindex/chat-ui'
 import { AuthType, ServiceDefinition } from './use-settings'
 import { buildApiUrl } from '@/lib/api-endpoint'
 import { buildAuthHeaders } from '@/lib/auth-headers'
+import { buildAssistantParts, extractResponsePayload } from '@/lib/chat-response-parts'
+import { normalizeMessages } from '@/lib/chat-message-normalize'
 import { getValueAtPath, renderTemplateValue } from '@/lib/service-config'
 import { getMessageText } from '@/lib/chat-message-utils'
 
@@ -241,7 +243,7 @@ export function useRealChat({
   onMessagesChange,
   validateBeforeSend,
 }: UseRealChatParams): RealChatHandler {
-  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [messages, setMessages] = useState<Message[]>(() => normalizeMessages(initialMessages))
   const [status, setStatus] = useState<'streaming' | 'ready' | 'error' | 'submitted'>('ready')
   const [error, setError] = useState<string | null>(null)
 
@@ -251,7 +253,7 @@ export function useRealChat({
     }
 
     const frame = window.requestAnimationFrame(() => {
-      setMessages(initialMessages)
+      setMessages(normalizeMessages(initialMessages))
     })
 
     return () => window.cancelAnimationFrame(frame)
@@ -346,31 +348,69 @@ export function useRealChat({
 
       setStatus('streaming')
 
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let assistantText = ''
-      let streamBuffer = ''
-
-      const commitAssistantMessage = (text: string) => {
+      const commitAssistantMessage = (text: string, extraParts: Message['parts'] = []) => {
         const finalMessages = [
           ...updatedMessages,
           {
             ...assistantMsg,
-            parts: [{ type: 'text', text }],
+            parts: buildAssistantParts(text, extraParts),
           },
         ]
         setMessages(finalMessages)
         onMessagesChange(finalMessages)
       }
 
+      const expectsStream = Boolean(
+        requestBody &&
+        typeof requestBody === 'object' &&
+        'stream' in (requestBody as Record<string, unknown>) &&
+        (requestBody as Record<string, unknown>).stream
+      )
+
+      if (!expectsStream) {
+        const raw = await response.text()
+        const parsed = (() => {
+          try {
+            return JSON.parse(raw) as unknown
+          } catch {
+            return raw
+          }
+        })()
+        const payload = extractResponsePayload(parsed)
+        commitAssistantMessage(payload.text, payload.parts)
+        setStatus('ready')
+        return
+      }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let assistantText = ''
+      let streamBuffer = ''
+      let assistantParts: Message['parts'] = []
+
       if (reader) {
         while (true) {
           const { done, value } = await reader.read()
           if (done) {
             if (streamBuffer.trim()) {
-              const { chunks } = parseStreamChunk(streamBuffer)
-              if (chunks.length > 0) {
-                assistantText += chunks.join('')
+              try {
+                const payload = extractResponsePayload(JSON.parse(streamBuffer) as unknown)
+                if (payload.text) {
+                  assistantText += payload.text
+                } else {
+                  const { chunks } = parseStreamChunk(streamBuffer)
+                  if (chunks.length > 0) {
+                    assistantText += chunks.join('')
+                  }
+                }
+                assistantParts = [...assistantParts, ...payload.parts]
+              } catch {
+                const { chunks } = parseStreamChunk(streamBuffer)
+                if (chunks.length > 0) {
+                  assistantText += chunks.join('')
+                } else {
+                  assistantText += streamBuffer
+                }
               }
             }
             break
@@ -387,6 +427,7 @@ export function useRealChat({
 
           for (const object of objects) {
             const parsedObject = JSON.parse(object) as Record<string, unknown>
+            const responsePayload = extractResponsePayload(parsedObject)
             const chunkValue =
               serviceDefinition?.stream?.contentPath
                 ? getValueAtPath(parsedObject, serviceDefinition.stream.contentPath)
@@ -399,17 +440,19 @@ export function useRealChat({
             const chunks = chunkValue == null ? [] : [String(chunkValue)]
             if (chunks.length > 0) {
               assistantText += chunks.join('')
-              commitAssistantMessage(assistantText)
+              assistantParts = [...assistantParts, ...responsePayload.parts]
+              commitAssistantMessage(assistantText, assistantParts)
             }
 
             if (streamDone) {
-              commitAssistantMessage(assistantText)
+              assistantParts = [...assistantParts, ...responsePayload.parts]
+              commitAssistantMessage(assistantText, assistantParts)
             }
           }
         }
       }
 
-      commitAssistantMessage(assistantText)
+      commitAssistantMessage(assistantText, assistantParts)
       setStatus('ready')
     } catch (error) {
       console.error('Chat error:', error)

@@ -70,7 +70,7 @@ export function ChatComposer({
   }
 
   return (
-    <div className="px-3 pb-4 pt-2 md:px-6 md:pb-6 md:pt-4">
+    <div className="px-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-2 md:px-6 md:pb-6 md:pt-4">
       <div className="rounded-3xl border border-border bg-card shadow-md shadow-muted/40">
         <div className="px-4 pt-4">
           <textarea

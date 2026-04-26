@@ -1,4 +1,5 @@
 import type { Message } from '@llamaindex/chat-ui'
+import { normalizeMessages } from '@/lib/chat-message-normalize'
 import { getTursoClient } from '@/lib/turso'
 
 interface TranscriptRow {
@@ -29,7 +30,7 @@ export async function getTranscript(sessionId: string, clerkUserId: string): Pro
   return {
     sessionId: String(row.session_id),
     clerkUserId: String(row.clerk_user_id),
-    messages: JSON.parse(String(row.messages_json)) as Message[],
+    messages: normalizeMessages(JSON.parse(String(row.messages_json))),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   }

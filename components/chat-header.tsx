@@ -5,7 +5,6 @@ import { Settings, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import type { AppUser } from '@/lib/chat-types'
-import type { DataMode } from '@/lib/app-plan'
 
 interface ChatHeaderProps {
   title: string
@@ -13,7 +12,6 @@ interface ChatHeaderProps {
   isConnected: boolean
   onSettingsOpen: () => void
   onMenuOpen: () => void
-  dataMode: DataMode
   currentUser: AppUser | null
 }
 
@@ -23,7 +21,6 @@ export function ChatHeader({
   isConnected,
   onSettingsOpen,
   onMenuOpen,
-  dataMode,
   currentUser,
 }: ChatHeaderProps) {
   const { isSignedIn } = useAuth()

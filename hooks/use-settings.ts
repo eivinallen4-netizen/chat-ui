@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import {
   parseServiceDefinitionMarkdown,
@@ -29,7 +29,7 @@ export function useSettings() {
   const [serviceConnections, setServiceConnections] = useState<Record<string, ServiceConnectionSettings>>({})
   const [systemPrompt, setSystemPromptState] = useState('')
   const [hydrated, setHydrated] = useState(false)
-  const [convexSeedApplied, setConvexSeedApplied] = useState(false)
+  const convexSeedAppliedRef = useRef(false)
   const convexSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const convexSystemPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -76,24 +76,26 @@ export function useSettings() {
   }, [])
 
   useEffect(() => {
-    if (convexUser === undefined || convexSeedApplied) return
-    setConvexSeedApplied(true)
+    if (convexUser === undefined || convexSeedAppliedRef.current) return
+    convexSeedAppliedRef.current = true
     const convexConnections = convexUser?.serviceConnections ?? null
     const convexSystemPrompt = convexUser?.systemPrompt ?? null
 
-    if (convexConnections) {
-      setServiceConnections(current => {
-        const merged = { ...current, ...convexConnections }
-        localStorage.setItem(SERVICE_CONNECTIONS_KEY, JSON.stringify(merged))
-        return merged
-      })
-    }
+    startTransition(() => {
+      if (convexConnections) {
+        setServiceConnections(current => {
+          const merged = { ...current, ...convexConnections }
+          localStorage.setItem(SERVICE_CONNECTIONS_KEY, JSON.stringify(merged))
+          return merged
+        })
+      }
 
-    if (convexSystemPrompt) {
-      setSystemPromptState(convexSystemPrompt)
-      localStorage.setItem(SYSTEM_PROMPT_KEY, JSON.stringify(convexSystemPrompt))
-    }
-  }, [convexUser, convexSeedApplied])
+      if (convexSystemPrompt) {
+        setSystemPromptState(convexSystemPrompt)
+        localStorage.setItem(SYSTEM_PROMPT_KEY, JSON.stringify(convexSystemPrompt))
+      }
+    })
+  }, [convexUser])
 
   const activeService = useMemo(() => {
     return services.find(service => service.id === activeServiceId) ?? services[0] ?? null

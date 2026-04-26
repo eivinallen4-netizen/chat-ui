@@ -151,7 +151,7 @@ export default function ChatApp() {
   // Show loading state until both hooks are hydrated
   if (!settingsHydrated || !history.hydrated) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
+      <div className="flex min-h-dvh w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 rounded-3xl bg-card p-8 shadow-md">
           <LoadingDots />
           <p className="text-muted-foreground text-sm font-medium">Loading chat</p>
@@ -161,7 +161,7 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+    <div className="flex min-h-dvh w-full overflow-hidden bg-background text-foreground">
       <Sidebar
         sessions={sessions}
         activeId={activeId}
@@ -183,7 +183,6 @@ export default function ChatApp() {
           isConnected={isConnected}
           onSettingsOpen={() => setSettingsOpen(true)}
           onMenuOpen={() => setSidebarOpen(true)}
-          dataMode={dataMode}
           currentUser={currentUser}
         />
 

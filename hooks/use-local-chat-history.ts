@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { Message } from '@llamaindex/chat-ui'
 import type { ChatSession } from '@/lib/chat-types'
 import { getFirstUserMessageTitle } from '@/lib/chat-message-utils'
+import { normalizeMessages } from '@/lib/chat-message-normalize'
 import { GUEST_MAX_CHATS } from '@/lib/app-plan'
 
 const HISTORY_STORAGE_KEY = 'chatui_history'
@@ -18,7 +19,12 @@ export function useLocalChatHistory() {
       try {
         const saved = localStorage.getItem(HISTORY_STORAGE_KEY)
         const parsed: ChatSession[] = saved ? JSON.parse(saved) : []
-        setSessions(parsed)
+        setSessions(
+          parsed.map(session => ({
+            ...session,
+            messages: normalizeMessages(session.messages),
+          }))
+        )
       } catch {
         setSessions([])
       }
