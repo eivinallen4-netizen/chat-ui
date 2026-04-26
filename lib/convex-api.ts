@@ -4,6 +4,7 @@ import type {
   ChatCreateResult,
   ChatSessionSummary,
   MessageValidationResult,
+  ServiceConnectionSettings,
 } from '@/lib/chat-types'
 
 const query = <Args extends Record<string, unknown>, Result>(name: string) =>
@@ -16,6 +17,10 @@ export const convexApi = {
   users: {
     getCurrentUser: query<Record<string, never>, AppUser | null>('users:getCurrentUser'),
     bootstrapCurrentUser: mutation<Record<string, never>, AppUser>('users:bootstrapCurrentUser'),
+    saveApiSettings: mutation<
+      { serviceConnections: Record<string, ServiceConnectionSettings> },
+      { ok: boolean }
+    >('users:saveApiSettings'),
     validateMessageForCurrentUser: mutation<{ textLength: number }, MessageValidationResult>(
       'users:validateMessageForCurrentUser'
     ),

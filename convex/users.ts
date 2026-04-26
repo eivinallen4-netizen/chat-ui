@@ -15,6 +15,11 @@ interface UserDoc {
   planTier: 'basic' | 'pro'
   persistedChatCount: number
   totalChatsCreated: number
+  serviceConnections?: Record<string, {
+    apiEndpoint: string
+    authType: 'bearer' | 'key' | 'none'
+    authToken: string
+  }>
 }
 
 async function requireIdentity(ctx: { auth: { getUserIdentity: () => Promise<Identity | null> } }) {
@@ -54,6 +59,7 @@ export const getCurrentUser = queryGeneric({
       planTier: user.planTier,
       persistedChatCount: user.persistedChatCount,
       totalChatsCreated: user.totalChatsCreated,
+      serviceConnections: user.serviceConnections ?? null,
     }
   },
 })
@@ -73,6 +79,7 @@ export const bootstrapCurrentUser = mutationGeneric({
         planTier: existingUser.planTier,
         persistedChatCount: existingUser.persistedChatCount,
         totalChatsCreated: existingUser.totalChatsCreated,
+        serviceConnections: existingUser.serviceConnections ?? null,
       }
     }
 
@@ -91,7 +98,31 @@ export const bootstrapCurrentUser = mutationGeneric({
       planTier: 'basic',
       persistedChatCount: 0,
       totalChatsCreated: 0,
+      serviceConnections: null,
     }
+  },
+})
+
+export const saveApiSettings = mutationGeneric({
+  args: {
+    serviceConnections: v.record(
+      v.string(),
+      v.object({
+        apiEndpoint: v.string(),
+        authType: v.union(v.literal('bearer'), v.literal('key'), v.literal('none')),
+        authToken: v.string(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx)
+    const user = await getUserByClerkId(ctx, identity.subject)
+    if (!user) throw new Error('User is not provisioned')
+    await ctx.db.patch(user._id, {
+      serviceConnections: args.serviceConnections,
+      updatedAt: new Date().toISOString(),
+    })
+    return { ok: true }
   },
 })
 

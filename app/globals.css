@@ -136,6 +136,18 @@
   to { transform: translateX(100%); }
 }
 
+/* Animated dots keyframe */
+@keyframes bounce-dots {
+  0%, 80%, 100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-8px);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

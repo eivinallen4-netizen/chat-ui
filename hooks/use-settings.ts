@@ -1,22 +1,19 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMutation, useQuery } from 'convex/react'
 import {
   parseServiceDefinitionMarkdown,
   ServiceDefinition,
   AuthType,
 } from '@/lib/service-config'
+import { convexApi } from '@/lib/convex-api'
+import type { ServiceConnectionSettings } from '@/lib/chat-types'
 
 const IMPORTED_SERVICE_DEFINITIONS_KEY = 'chatui_importedServiceDefinitions'
 const ACTIVE_SERVICE_ID_KEY = 'chatui_activeServiceId'
 const SELECTED_MODEL_BY_SERVICE_KEY = 'chatui_selectedModelByService'
 const SERVICE_CONNECTIONS_KEY = 'chatui_serviceConnections'
-
-interface ServiceConnectionSettings {
-  apiEndpoint: string
-  authType: AuthType
-  authToken: string
-}
 
 const DEFAULT_CONNECTION_SETTINGS: ServiceConnectionSettings = {
   apiEndpoint: '',
@@ -30,6 +27,11 @@ export function useSettings() {
   const [selectedModels, setSelectedModels] = useState<Record<string, string>>({})
   const [serviceConnections, setServiceConnections] = useState<Record<string, ServiceConnectionSettings>>({})
   const [hydrated, setHydrated] = useState(false)
+  const [convexSeedApplied, setConvexSeedApplied] = useState(false)
+  const convexSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const convexUser = useQuery(convexApi.users.getCurrentUser)
+  const saveApiSettingsMutation = useMutation(convexApi.users.saveApiSettings)
 
   useEffect(() => {
     const loadServices = async () => {
@@ -67,6 +69,18 @@ export function useSettings() {
 
     void loadServices()
   }, [])
+
+  useEffect(() => {
+    if (convexUser === undefined || convexSeedApplied) return
+    setConvexSeedApplied(true)
+    const convexConnections = convexUser?.serviceConnections ?? null
+    if (!convexConnections) return
+    setServiceConnections(current => {
+      const merged = { ...current, ...convexConnections }
+      localStorage.setItem(SERVICE_CONNECTIONS_KEY, JSON.stringify(merged))
+      return merged
+    })
+  }, [convexUser, convexSeedApplied])
 
   const activeService = useMemo(() => {
     return services.find(service => service.id === activeServiceId) ?? services[0] ?? null
@@ -131,6 +145,13 @@ export function useSettings() {
 
     setServiceConnections(nextConnections)
     localStorage.setItem(SERVICE_CONNECTIONS_KEY, JSON.stringify(nextConnections))
+
+    if (convexUser) {
+      if (convexSaveTimerRef.current) clearTimeout(convexSaveTimerRef.current)
+      convexSaveTimerRef.current = setTimeout(() => {
+        void saveApiSettingsMutation({ serviceConnections: nextConnections }).catch(() => {})
+      }, 800)
+    }
   }
 
   const setApiEndpoint = (value: string) => {

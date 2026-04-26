@@ -14,6 +14,7 @@ import { Sidebar } from './sidebar'
 import { ChatHeader } from './chat-header'
 import { ChatPane } from './chat-pane'
 import { SettingsPanel } from './settings-panel'
+import { LoadingDots } from './loading-dots'
 
 export default function ChatApp() {
   const hasConvex = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL)
@@ -144,7 +145,10 @@ export default function ChatApp() {
   if (!settingsHydrated || !history.hydrated) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center gap-3">
+          <LoadingDots />
+          <p className="text-muted-foreground text-sm">Loading chat</p>
+        </div>
       </div>
     )
   }

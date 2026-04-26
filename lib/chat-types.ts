@@ -1,6 +1,12 @@
 import type { Message } from '@llamaindex/chat-ui'
 import type { DataMode, PlanTier } from '@/lib/app-plan'
 
+export interface ServiceConnectionSettings {
+  apiEndpoint: string
+  authType: 'bearer' | 'key' | 'none'
+  authToken: string
+}
+
 export interface ChatSessionSummary {
   id: string
   title: string
@@ -19,6 +25,7 @@ export interface AppUser {
   planTier: PlanTier
   persistedChatCount: number
   totalChatsCreated: number
+  serviceConnections: Record<string, ServiceConnectionSettings> | null
 }
 
 export interface ChatCreateSuccess {

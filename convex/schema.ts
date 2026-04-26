@@ -9,6 +9,16 @@ export default defineSchema({
     totalChatsCreated: v.number(),
     createdAt: v.string(),
     updatedAt: v.string(),
+    serviceConnections: v.optional(
+      v.record(
+        v.string(),
+        v.object({
+          apiEndpoint: v.string(),
+          authType: v.union(v.literal('bearer'), v.literal('key'), v.literal('none')),
+          authToken: v.string(),
+        })
+      )
+    ),
   }).index('by_clerk_id', ['clerkId']),
   chatSessions: defineTable({
     ownerUserId: v.id('users'),
