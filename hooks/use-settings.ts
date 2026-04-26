@@ -14,6 +14,7 @@ const IMPORTED_SERVICE_DEFINITIONS_KEY = 'chatui_importedServiceDefinitions'
 const ACTIVE_SERVICE_ID_KEY = 'chatui_activeServiceId'
 const SELECTED_MODEL_BY_SERVICE_KEY = 'chatui_selectedModelByService'
 const SERVICE_CONNECTIONS_KEY = 'chatui_serviceConnections'
+const SYSTEM_PROMPT_KEY = 'chatui_systemPrompt'
 
 const DEFAULT_CONNECTION_SETTINGS: ServiceConnectionSettings = {
   apiEndpoint: '',
@@ -26,9 +27,11 @@ export function useSettings() {
   const [activeServiceId, setActiveServiceIdState] = useState('')
   const [selectedModels, setSelectedModels] = useState<Record<string, string>>({})
   const [serviceConnections, setServiceConnections] = useState<Record<string, ServiceConnectionSettings>>({})
+  const [systemPrompt, setSystemPromptState] = useState('')
   const [hydrated, setHydrated] = useState(false)
   const [convexSeedApplied, setConvexSeedApplied] = useState(false)
   const convexSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const convexSystemPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const convexUser = useQuery(convexApi.users.getCurrentUser)
   const saveApiSettingsMutation = useMutation(convexApi.users.saveApiSettings)
@@ -54,6 +57,7 @@ export function useSettings() {
 
         setSelectedModels(JSON.parse(localStorage.getItem(SELECTED_MODEL_BY_SERVICE_KEY) || '{}'))
         setServiceConnections(JSON.parse(localStorage.getItem(SERVICE_CONNECTIONS_KEY) || '{}'))
+        setSystemPromptState(JSON.parse(localStorage.getItem(SYSTEM_PROMPT_KEY) || '""'))
       } catch {
         const importedMarkdown =
           JSON.parse(localStorage.getItem(IMPORTED_SERVICE_DEFINITIONS_KEY) || '[]') as string[]
@@ -62,6 +66,7 @@ export function useSettings() {
         setActiveServiceIdState(importedServices[0]?.id || '')
         setSelectedModels(JSON.parse(localStorage.getItem(SELECTED_MODEL_BY_SERVICE_KEY) || '{}'))
         setServiceConnections(JSON.parse(localStorage.getItem(SERVICE_CONNECTIONS_KEY) || '{}'))
+        setSystemPromptState(JSON.parse(localStorage.getItem(SYSTEM_PROMPT_KEY) || '""'))
       } finally {
         setHydrated(true)
       }
@@ -74,12 +79,20 @@ export function useSettings() {
     if (convexUser === undefined || convexSeedApplied) return
     setConvexSeedApplied(true)
     const convexConnections = convexUser?.serviceConnections ?? null
-    if (!convexConnections) return
-    setServiceConnections(current => {
-      const merged = { ...current, ...convexConnections }
-      localStorage.setItem(SERVICE_CONNECTIONS_KEY, JSON.stringify(merged))
-      return merged
-    })
+    const convexSystemPrompt = convexUser?.systemPrompt ?? null
+
+    if (convexConnections) {
+      setServiceConnections(current => {
+        const merged = { ...current, ...convexConnections }
+        localStorage.setItem(SERVICE_CONNECTIONS_KEY, JSON.stringify(merged))
+        return merged
+      })
+    }
+
+    if (convexSystemPrompt) {
+      setSystemPromptState(convexSystemPrompt)
+      localStorage.setItem(SYSTEM_PROMPT_KEY, JSON.stringify(convexSystemPrompt))
+    }
   }, [convexUser, convexSeedApplied])
 
   const activeService = useMemo(() => {
@@ -149,7 +162,7 @@ export function useSettings() {
     if (convexUser) {
       if (convexSaveTimerRef.current) clearTimeout(convexSaveTimerRef.current)
       convexSaveTimerRef.current = setTimeout(() => {
-        void saveApiSettingsMutation({ serviceConnections: nextConnections }).catch(() => {})
+        void saveApiSettingsMutation({ serviceConnections: nextConnections, systemPrompt }).catch(() => {})
       }, 800)
     }
   }
@@ -172,6 +185,18 @@ export function useSettings() {
     })
   }
 
+  const setSystemPromptValue = (value: string) => {
+    setSystemPromptState(value)
+    localStorage.setItem(SYSTEM_PROMPT_KEY, JSON.stringify(value))
+
+    if (convexUser) {
+      if (convexSystemPromptTimerRef.current) clearTimeout(convexSystemPromptTimerRef.current)
+      convexSystemPromptTimerRef.current = setTimeout(() => {
+        void saveApiSettingsMutation({ serviceConnections, systemPrompt: value }).catch(() => {})
+      }, 800)
+    }
+  }
+
   return {
     services,
     activeService,
@@ -181,7 +206,7 @@ export function useSettings() {
     authType: activeConnection.authType,
     authToken: activeConnection.authToken,
     selectedModel,
-    systemPrompt: '',
+    systemPrompt,
     serviceDefinition: activeService,
     setActiveServiceId,
     importServiceMarkdown,
@@ -189,6 +214,7 @@ export function useSettings() {
     setApiEndpoint,
     setAuthType,
     setAuthToken,
+    setSystemPrompt: setSystemPromptValue,
     hydrated,
   }
 }

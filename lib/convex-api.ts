@@ -18,7 +18,7 @@ export const convexApi = {
     getCurrentUser: query<Record<string, never>, AppUser | null>('users:getCurrentUser'),
     bootstrapCurrentUser: mutation<Record<string, never>, AppUser>('users:bootstrapCurrentUser'),
     saveApiSettings: mutation<
-      { serviceConnections: Record<string, ServiceConnectionSettings> },
+      { serviceConnections: Record<string, ServiceConnectionSettings>; systemPrompt?: string },
       { ok: boolean }
     >('users:saveApiSettings'),
     validateMessageForCurrentUser: mutation<{ textLength: number }, MessageValidationResult>(

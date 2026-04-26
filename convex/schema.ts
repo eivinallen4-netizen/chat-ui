@@ -19,6 +19,7 @@ export default defineSchema({
         })
       )
     ),
+    systemPrompt: v.optional(v.string()),
   }).index('by_clerk_id', ['clerkId']),
   chatSessions: defineTable({
     ownerUserId: v.id('users'),

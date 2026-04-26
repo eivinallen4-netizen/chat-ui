@@ -23,6 +23,12 @@ export default function RootLayout({
           <AppProviders>{children}</AppProviders>
         </ClerkProvider>
       </body>
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9175480296831852"
+        crossOrigin="anonymous"
+        strategy="afterInteractive"
+      />
       {googleTagId && (
         <>
           <Script

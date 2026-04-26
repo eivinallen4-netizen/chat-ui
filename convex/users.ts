@@ -20,6 +20,7 @@ interface UserDoc {
     authType: 'bearer' | 'key' | 'none'
     authToken: string
   }>
+  systemPrompt?: string
 }
 
 async function requireIdentity(ctx: { auth: { getUserIdentity: () => Promise<Identity | null> } }) {
@@ -60,6 +61,7 @@ export const getCurrentUser = queryGeneric({
       persistedChatCount: user.persistedChatCount,
       totalChatsCreated: user.totalChatsCreated,
       serviceConnections: user.serviceConnections ?? null,
+      systemPrompt: user.systemPrompt ?? null,
     }
   },
 })
@@ -80,6 +82,7 @@ export const bootstrapCurrentUser = mutationGeneric({
         persistedChatCount: existingUser.persistedChatCount,
         totalChatsCreated: existingUser.totalChatsCreated,
         serviceConnections: existingUser.serviceConnections ?? null,
+        systemPrompt: existingUser.systemPrompt ?? null,
       }
     }
 
@@ -99,6 +102,7 @@ export const bootstrapCurrentUser = mutationGeneric({
       persistedChatCount: 0,
       totalChatsCreated: 0,
       serviceConnections: null,
+      systemPrompt: null,
     }
   },
 })
@@ -113,6 +117,7 @@ export const saveApiSettings = mutationGeneric({
         authToken: v.string(),
       })
     ),
+    systemPrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx)
@@ -120,6 +125,7 @@ export const saveApiSettings = mutationGeneric({
     if (!user) throw new Error('User is not provisioned')
     await ctx.db.patch(user._id, {
       serviceConnections: args.serviceConnections,
+      ...(args.systemPrompt !== undefined ? { systemPrompt: args.systemPrompt } : {}),
       updatedAt: new Date().toISOString(),
     })
     return { ok: true }

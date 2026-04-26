@@ -47,7 +47,7 @@ export function ChatComposer({
   const currentLength = input.length
   const effectiveLimit = messageLimit ?? BASIC_PLAN_MAX_MESSAGE_CHARS
   const isOverLimit = messageLimit !== null && currentLength > effectiveLimit
-  const submitDisabled = !input.trim() || isSending || isOverLimit
+  const submitDisabled = !input.trim() || isSending || isOverLimit || !selectedModel
 
   const submitMessage = async () => {
     if (submitDisabled) {
@@ -70,8 +70,8 @@ export function ChatComposer({
   }
 
   return (
-    <div className="border-t border-border px-6 pb-6 pt-4">
-      <div className="rounded-2xl border border-border bg-background">
+    <div className="px-3 pb-4 pt-2 md:px-6 md:pb-6 md:pt-4">
+      <div className="rounded-3xl border border-border bg-card shadow-md shadow-muted/40">
         <div className="px-4 pt-4">
           <textarea
             value={input}
@@ -83,7 +83,7 @@ export function ChatComposer({
               }
             }}
             placeholder="Type a message..."
-            className="min-h-[120px] w-full resize-none border-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-h-[80px] md:min-h-[120px] w-full resize-none border-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground font-sans"
             spellCheck={false}
           />
         </div>
@@ -105,7 +105,7 @@ export function ChatComposer({
             {messageLimit !== null && (
               <span
                 className={cn(
-                  'text-xs tabular-nums',
+                  'text-xs tabular-nums px-2 py-0.5 rounded-full bg-muted',
                   isOverLimit ? 'text-destructive' : 'text-muted-foreground'
                 )}
               >
@@ -119,16 +119,18 @@ export function ChatComposer({
             size="icon"
             onClick={() => void submitMessage()}
             disabled={submitDisabled}
-            className="rounded-full"
+            className="rounded-full size-10 shrink-0 hover:scale-105 active:scale-90 transition-transform disabled:scale-100"
           >
             <Send className="size-4" />
           </Button>
         </div>
       </div>
 
-      {(validationError || isOverLimit) && (
+      {(validationError || isOverLimit || !selectedModel) && (
         <p className="mt-2 text-sm text-destructive">
-          {validationError ?? `Basic plan messages are limited to ${effectiveLimit} characters.`}
+          {!selectedModel
+            ? 'Select a model before sending.'
+            : validationError ?? `Basic plan messages are limited to ${effectiveLimit} characters.`}
         </p>
       )}
     </div>

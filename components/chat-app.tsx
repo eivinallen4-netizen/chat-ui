@@ -15,10 +15,14 @@ import { ChatHeader } from './chat-header'
 import { ChatPane } from './chat-pane'
 import { SettingsPanel } from './settings-panel'
 import { LoadingDots } from './loading-dots'
+import { OnboardingPanel } from './onboarding-panel'
 
 export default function ChatApp() {
   const hasConvex = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false)
+  const [onboardingManuallyOpen, setOnboardingManuallyOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
   const {
     services,
@@ -36,6 +40,7 @@ export default function ChatApp() {
     setApiEndpoint,
     setAuthType,
     setAuthToken,
+    setSystemPrompt,
     hydrated: settingsHydrated,
   } = useSettings()
 
@@ -69,6 +74,8 @@ export default function ChatApp() {
     dataMode === 'authenticated' && currentUser?.planTier === 'basic'
       ? BASIC_PLAN_MAX_MESSAGE_CHARS
       : null
+  const onboardingOpen =
+    onboardingManuallyOpen || (history.hydrated && sessions.length === 0 && !onboardingDismissed)
 
   const handler = useRealChat({
     apiEndpoint,
@@ -145,9 +152,9 @@ export default function ChatApp() {
   if (!settingsHydrated || !history.hydrated) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-4 rounded-3xl bg-card p-8 shadow-md">
           <LoadingDots />
-          <p className="text-muted-foreground text-sm">Loading chat</p>
+          <p className="text-muted-foreground text-sm font-medium">Loading chat</p>
         </div>
       </div>
     )
@@ -164,6 +171,9 @@ export default function ChatApp() {
         dataMode={dataMode}
         currentUser={currentUser}
         error={history.error}
+        isMobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
+        onFeaturesClick={() => setOnboardingManuallyOpen(true)}
       />
 
       <div className="flex flex-col flex-1 min-w-0 min-h-0">
@@ -172,6 +182,7 @@ export default function ChatApp() {
           serviceName={activeService?.name ?? 'Service'}
           isConnected={isConnected}
           onSettingsOpen={() => setSettingsOpen(true)}
+          onMenuOpen={() => setSidebarOpen(true)}
           dataMode={dataMode}
           currentUser={currentUser}
         />
@@ -209,11 +220,20 @@ export default function ChatApp() {
         apiEndpoint={apiEndpoint}
         authType={authType}
         authToken={authToken}
+        systemPrompt={systemPrompt}
         onSelectService={setActiveServiceId}
         onImportMarkdown={importServiceMarkdown}
         onApiEndpointChange={setApiEndpoint}
         onAuthTypeChange={setAuthType}
         onAuthTokenChange={setAuthToken}
+        onSystemPromptChange={setSystemPrompt}
+      />
+      <OnboardingPanel
+        open={onboardingOpen}
+        onClose={() => {
+          setOnboardingDismissed(true)
+          setOnboardingManuallyOpen(false)
+        }}
       />
     </div>
   )
@@ -221,19 +241,21 @@ export default function ChatApp() {
 
 function EmptyState({ onNew, dataMode }: { onNew: () => void; dataMode: 'guest' | 'authenticated' }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-background">
-      <h2 className="font-display text-3xl font-bold text-foreground">Start a conversation</h2>
-      <p className="text-muted-foreground">
-        {dataMode === 'authenticated'
-          ? 'Select a synced chat from the sidebar or begin a new one.'
-          : 'Select a local chat from the sidebar or begin a new one.'}
-      </p>
-      <button
-        onClick={onNew}
-        className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-      >
-        New Chat
-      </button>
+    <div className="flex flex-1 flex-col items-center justify-center gap-5 bg-background px-4">
+      <div className="rounded-3xl bg-card p-8 shadow-sm text-center max-w-sm w-full">
+        <h2 className="font-display text-3xl font-bold text-foreground mb-2">Start a conversation</h2>
+        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
+          {dataMode === 'authenticated'
+            ? 'Select a synced chat or begin a new one.'
+            : 'Select a local chat or begin a new one.'}
+        </p>
+        <button
+          onClick={onNew}
+          className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-semibold hover:opacity-90 active:scale-95 transition-all min-h-[48px]"
+        >
+          New Chat
+        </button>
+      </div>
     </div>
   )
 }

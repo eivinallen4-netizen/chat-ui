@@ -26,6 +26,7 @@ export interface AppUser {
   persistedChatCount: number
   totalChatsCreated: number
   serviceConnections: Record<string, ServiceConnectionSettings> | null
+  systemPrompt: string | null
 }
 
 export interface ChatCreateSuccess {

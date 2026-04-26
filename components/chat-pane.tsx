@@ -47,8 +47,8 @@ export function ChatPane({
   onValidationErrorChange,
 }: ChatPaneProps) {
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-background">
-      <ChatSection handler={handler} className="gap-0 px-6 pb-2 pt-5">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-background chat-pane-root">
+      <ChatSection handler={handler} className="gap-0 !px-3 !pb-2 !pt-4 md:!px-6 md:!pt-5">
         <ChatMessages />
       </ChatSection>
       <ChatComposer
