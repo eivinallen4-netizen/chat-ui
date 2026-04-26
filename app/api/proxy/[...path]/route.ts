@@ -22,8 +22,24 @@ async function proxyRequest(
 
   try {
     const headers: Record<string, string> = {}
-    const contentType = request.headers.get('content-type')
-    if (contentType) headers['Content-Type'] = contentType
+
+    // Forward request headers that the upstream service might need
+    const forwardHeaders = [
+      'content-type',
+      'authorization',
+      'x-api-key',
+      'accept',
+      'accept-encoding',
+      'accept-language',
+      'user-agent',
+    ]
+
+    for (const headerName of forwardHeaders) {
+      const headerValue = request.headers.get(headerName)
+      if (headerValue) {
+        headers[headerName.charAt(0).toUpperCase() + headerName.slice(1).replace(/-([a-z])/g, (_, c) => '-' + c.toUpperCase())] = headerValue
+      }
+    }
 
     let body: string | undefined
     if (method !== 'GET' && method !== 'DELETE') {
@@ -38,15 +54,15 @@ async function proxyRequest(
       body,
     })
 
-    const text = await response.text()
-    let data
-    try {
-      data = JSON.parse(text)
-    } catch {
-      data = text
-    }
+    // Forward response as-is to preserve streaming and content-type
+    // Create new Response to allow modification of headers if needed
+    const responseHeaders = new Headers(response.headers)
 
-    return Response.json(data, { status: response.status })
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    })
   } catch (error) {
     return Response.json(
       { error: 'Proxy request failed', details: error instanceof Error ? error.message : 'Unknown error' },
