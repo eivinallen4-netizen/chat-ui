@@ -161,7 +161,7 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="flex min-h-dvh w-full overflow-hidden bg-background text-foreground">
+    <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
       <Sidebar
         sessions={sessions}
         activeId={activeId}

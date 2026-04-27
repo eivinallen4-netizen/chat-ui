@@ -67,7 +67,7 @@ export function ChatPane({
   onValidationErrorChange,
 }: ChatPaneProps) {
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-background chat-pane-root">
+    <div className="flex flex-col h-screen flex-1 overflow-hidden bg-background chat-pane-root">
       <MessageList handler={handler} />
       <ChatComposer
         handler={handler}
@@ -107,7 +107,7 @@ function MessageList({ handler }: { handler: ChatHandler }) {
   }, [handler.messages, handler.status])
 
   return (
-    <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 pb-2 pt-4 md:px-6 md:pt-5">
+    <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto  bg-background mx-3 mb-2 mt-3 p-3 md:p-6">
       {handler.messages.map(message => (
         <div
           key={message.id}

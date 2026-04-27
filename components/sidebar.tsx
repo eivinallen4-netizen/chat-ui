@@ -104,7 +104,7 @@ export function Sidebar({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-2">
+        <div className="flex-1 min-h-0 overflow-y-auto py-2">
           {sessions.length === 0 && (
             <p className="text-sm text-muted-foreground px-4 py-3">No chats yet</p>
           )}
@@ -137,7 +137,7 @@ export function Sidebar({
           ))}
         </div>
 
-        <div className="border-t border-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+        <div className="mt-auto border-t border-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           {dataMode === 'authenticated' && currentUser ? (
             <>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
