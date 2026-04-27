@@ -49,7 +49,7 @@ NEVER read, edit, or create the following files under any circumstances:
 | Var | Notes |
 |-----|-------|
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` | Clerk auth |
-| `CLERK_JWT_ISSUER_DOMAIN` | Custom Clerk domain (`https://clerk.cheezygo.com`) |
+| `CLERK_JWT_ISSUER_DOMAIN` | Clerk instance domain (`https://cdn.clerk.com`) |
 | `NEXT_PUBLIC_CONVEX_URL` | Enables authenticated mode when set |
 | `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | Transcript storage |
 | `NEXT_PUBLIC_GOOGLE_TAG_ID` | GTM — omits scripts if empty |
