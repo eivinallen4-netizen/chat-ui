@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { ChatHandler, Message } from '@llamaindex/chat-ui'
-import { Send } from 'lucide-react'
+import { Send, Share2, BookOpen, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { BASIC_PLAN_MAX_MESSAGE_CHARS } from '@/lib/app-plan'
@@ -16,14 +16,17 @@ interface ChatComposerProps {
   onModelChange: (model: string) => void
   loading: boolean
   isConnected: boolean
-  isMutating: boolean
+  isDeleting: boolean
   error: string | null
   onRefresh: () => void
-  onAddModel: (modelName: string) => Promise<void>
   onDeleteModels: (modelNames: string[]) => Promise<void>
+  pullingModelName?: string | null
   messageLimit: number | null
   validationError: string | null
   onValidationErrorChange: (error: string | null) => void
+  onShare?: () => void
+  onModelLibraryOpen?: () => void
+  onModelLibraryRefresh?: () => void
 }
 
 export function ChatComposer({
@@ -33,14 +36,17 @@ export function ChatComposer({
   onModelChange,
   loading,
   isConnected,
-  isMutating,
+  isDeleting,
   error,
   onRefresh,
-  onAddModel,
   onDeleteModels,
+  pullingModelName = null,
   messageLimit,
   validationError,
   onValidationErrorChange,
+  onShare,
+  onModelLibraryOpen,
+  onModelLibraryRefresh,
 }: ChatComposerProps) {
   const [input, setInput] = useState('')
   const isSending = handler.status === 'submitted' || handler.status === 'streaming'
@@ -96,12 +102,48 @@ export function ChatComposer({
               onModelChange={onModelChange}
               loading={loading}
               isConnected={isConnected}
-              isMutating={isMutating}
+              isDeleting={isDeleting}
               error={error}
               onRefresh={onRefresh}
-              onAddModel={onAddModel}
               onDeleteModels={onDeleteModels}
+              pullingModelName={pullingModelName}
             />
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={onModelLibraryOpen}
+              className="rounded-xl size-10 shrink-0"
+              title="Add Model"
+              aria-label="Add Model"
+            >
+              <BookOpen className="size-4" />
+            </Button>
+            {process.env.NODE_ENV === 'development' ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={onModelLibraryRefresh}
+                className="rounded-xl size-10 shrink-0"
+                title="Refresh model library cache"
+                aria-label="Refresh model library cache"
+              >
+                <RefreshCw className="size-4" />
+              </Button>
+            ) : null}
+            {onShare && (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={onShare}
+                className="rounded-full size-10 shrink-0"
+                title="Share this chat"
+              >
+                <Share2 className="size-4" />
+              </Button>
+            )}
             {messageLimit !== null && (
               <span
                 className={cn(

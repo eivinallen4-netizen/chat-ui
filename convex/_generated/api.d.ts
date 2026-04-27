@@ -9,6 +9,7 @@
  */
 
 import type * as chatSessions from "../chatSessions.js";
+import type * as ollamaCache from "../ollamaCache.js";
 import type * as users from "../users.js";
 
 import type {
@@ -19,6 +20,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   chatSessions: typeof chatSessions;
+  ollamaCache: typeof ollamaCache;
   users: typeof users;
 }>;
 

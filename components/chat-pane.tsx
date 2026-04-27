@@ -40,14 +40,17 @@ interface ChatPaneProps {
   onModelChange: (model: string) => void
   loading: boolean
   isConnected: boolean
-  isMutating: boolean
+  isDeleting: boolean
   error: string | null
   onRefresh: () => void
-  onAddModel: (modelName: string) => Promise<void>
   onDeleteModels: (modelNames: string[]) => Promise<void>
+  pullingModelName?: string | null
   messageLimit: number | null
   validationError: string | null
   onValidationErrorChange: (error: string | null) => void
+  onShare?: () => void
+  onModelLibraryOpen?: () => void
+  onModelLibraryRefresh?: () => void
 }
 
 export function ChatPane({
@@ -57,14 +60,17 @@ export function ChatPane({
   onModelChange,
   loading,
   isConnected,
-  isMutating,
+  isDeleting,
   error,
   onRefresh,
-  onAddModel,
   onDeleteModels,
+  pullingModelName = null,
   messageLimit,
   validationError,
   onValidationErrorChange,
+  onShare,
+  onModelLibraryOpen,
+  onModelLibraryRefresh,
 }: ChatPaneProps) {
   return (
     <div className="flex flex-col h-screen flex-1 overflow-hidden bg-background chat-pane-root">
@@ -76,11 +82,11 @@ export function ChatPane({
         onModelChange={onModelChange}
         loading={loading}
         isConnected={isConnected}
-        isMutating={isMutating}
+        isDeleting={isDeleting}
         error={error ?? handler.error ?? null}
         onRefresh={onRefresh}
-        onAddModel={onAddModel}
         onDeleteModels={onDeleteModels}
+        pullingModelName={pullingModelName}
         messageLimit={messageLimit}
         validationError={validationError ?? handler.error ?? null}
         onValidationErrorChange={nextError => {
@@ -89,6 +95,9 @@ export function ChatPane({
             handler.clearError?.()
           }
         }}
+        onShare={onShare}
+        onModelLibraryOpen={onModelLibraryOpen}
+        onModelLibraryRefresh={onModelLibraryRefresh}
       />
     </div>
   )

@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -45,11 +47,30 @@ const STEPS = [
 ]
 
 export function OnboardingPanel({ open, onClose }: OnboardingPanelProps) {
+  const [currentStep, setCurrentStep] = useState(0)
+
+  const goToPrevious = () => {
+    setCurrentStep((prev) => (prev === 0 ? STEPS.length - 1 : prev - 1))
+  }
+
+  const goToNext = () => {
+    setCurrentStep((prev) => (prev === STEPS.length - 1 ? 0 : prev + 1))
+  }
+
+  const goToStep = (index: number) => {
+    setCurrentStep(index)
+  }
+
+  const handleClose = () => {
+    setCurrentStep(0)
+    onClose()
+  }
+
   return (
     <Dialog
       open={open}
       onOpenChange={v => {
-        if (!v) onClose()
+        if (!v) handleClose()
       }}
     >
       <DialogContent
@@ -63,11 +84,12 @@ export function OnboardingPanel({ open, onClose }: OnboardingPanelProps) {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+          {/* Desktop: 4-Column Grid */}
+          <div className="hidden lg:grid grid-cols-4 divide-x divide-border">
             {STEPS.map(step => (
               <div
                 key={step.number}
-                className="flex flex-col items-center gap-3 px-5 py-6 text-center sm:py-8"
+                className="flex flex-col items-center gap-3 px-6 py-8 text-center"
               >
                 <span className="font-display text-5xl font-bold leading-none text-primary">
                   {step.number}
@@ -92,9 +114,93 @@ export function OnboardingPanel({ open, onClose }: OnboardingPanelProps) {
             ))}
           </div>
 
+          {/* Mobile/Tablet: Carousel View */}
+          <div className="lg:hidden">
+            <div className="relative min-h-[420px] overflow-hidden bg-gradient-to-b from-muted/20 to-transparent">
+              <div className="flex flex-col items-center gap-5 px-6 py-10 sm:py-12 text-center">
+                {/* Step Indicator with Progress */}
+                <div className="flex items-center gap-2">
+                  <span className="font-display text-6xl sm:text-7xl font-bold leading-none text-primary tabular-nums">
+                    {STEPS[currentStep].number}
+                  </span>
+                  <div className="flex flex-col justify-center">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Step
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      of {STEPS.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Image with Animation */}
+                <div className="relative flex aspect-video w-full max-w-xs sm:max-w-sm items-center justify-center overflow-hidden rounded-3xl bg-muted/40 shadow-lg border border-border/50 animate-in fade-in duration-300">
+                  <Image
+                    key={currentStep}
+                    src={STEPS[currentStep].src}
+                    alt={STEPS[currentStep].alt}
+                    fill
+                    sizes="(max-width: 640px) 90vw, 440px"
+                    className="object-contain"
+                    draggable={false}
+                    priority
+                  />
+                </div>
+
+                {/* Title and Description */}
+                <div className="space-y-2">
+                  <h3 className="font-display text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                    {STEPS[currentStep].title}
+                  </h3>
+                  <p className="text-sm sm:text-base leading-relaxed text-muted-foreground max-w-sm mx-auto">
+                    {STEPS[currentStep].subtext}
+                  </p>
+                </div>
+
+                {/* Progress Dots */}
+                <div className="flex gap-2 pt-2">
+                  {STEPS.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToStep(index)}
+                      className={`transition-all duration-300 rounded-full ${
+                        index === currentStep
+                          ? 'w-8 h-2 bg-primary'
+                          : 'w-2 h-2 bg-muted-foreground/40 hover:bg-muted-foreground/60'
+                      }`}
+                      aria-label={`Go to step ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="absolute inset-y-0 left-0 flex items-center px-3 sm:px-4">
+                <button
+                  onClick={goToPrevious}
+                  className="group inline-flex items-center justify-center h-10 w-10 rounded-full bg-background/80 backdrop-blur border border-border/50 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary hover:border-primary/50 active:scale-95"
+                  aria-label="Previous step"
+                >
+                  <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" />
+                </button>
+              </div>
+
+              <div className="absolute inset-y-0 right-0 flex items-center px-3 sm:px-4">
+                <button
+                  onClick={goToNext}
+                  className="group inline-flex items-center justify-center h-10 w-10 rounded-full bg-background/80 backdrop-blur border border-border/50 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary hover:border-primary/50 active:scale-95"
+                  aria-label="Next step"
+                >
+                  <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
           <div className="flex justify-end border-t border-border bg-muted/30 px-4 py-4 sm:px-6 sm:py-5">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="min-h-[48px] rounded-2xl bg-primary px-8 font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
             >
               Get Started

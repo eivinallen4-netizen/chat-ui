@@ -60,3 +60,29 @@ export async function deleteTranscript(sessionId: string, clerkUserId: string) {
     args: [sessionId, clerkUserId],
   })
 }
+
+export async function getTranscriptBySessionIdOnly(sessionId: string): Promise<TranscriptRow | null> {
+  const client = await getTursoClient()
+  const result = await client.execute({
+    sql: `
+      SELECT session_id, clerk_user_id, messages_json, created_at, updated_at
+      FROM chat_transcripts
+      WHERE session_id = ?
+      LIMIT 1
+    `,
+    args: [sessionId],
+  })
+
+  const row = result.rows[0]
+  if (!row) {
+    return null
+  }
+
+  return {
+    sessionId: String(row.session_id),
+    clerkUserId: String(row.clerk_user_id),
+    messages: normalizeMessages(JSON.parse(String(row.messages_json))),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }
+}

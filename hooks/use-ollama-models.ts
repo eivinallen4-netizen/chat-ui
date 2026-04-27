@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { buildApiUrl } from '@/lib/api-endpoint'
 import { buildAuthHeaders } from '@/lib/auth-headers'
 import { AuthType, ServiceDefinition } from './use-settings'
@@ -10,7 +10,6 @@ export interface OllamaModel {
   name: string
   modified_at: string
   size: number
-  status?: 'downloading' | 'done'
 }
 
 export function useOllamaModels(
@@ -24,9 +23,8 @@ export function useOllamaModels(
   const [error, setError] = useState<string | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isPulling, setIsPulling] = useState(false)
   const [mutationError, setMutationError] = useState<string | null>(null)
-  const [pendingPulls, setPendingPulls] = useState<Record<string, 'downloading' | 'done'>>({})
-  const doneTimeoutsRef = useRef<Record<string, number>>({})
 
   const requestHeaders = useMemo(
     () => ({
@@ -38,15 +36,26 @@ export function useOllamaModels(
 
   const fetchModels = useCallback(async () => {
     if (!apiEndpoint || !serviceDefinition?.endpoints.models) {
+      console.log('[useOllamaModels] Skipping model fetch', {
+        hasApiEndpoint: Boolean(apiEndpoint),
+        hasModelsEndpoint: Boolean(serviceDefinition?.endpoints.models),
+        serviceId: serviceDefinition?.id ?? null,
+      })
       setModels([])
       setIsConnected(false)
       return
     }
 
+    const requestUrl = buildApiUrl(apiEndpoint, serviceDefinition.endpoints.models.path)
+    console.log('[useOllamaModels] Fetching models', {
+      serviceId: serviceDefinition.id,
+      method: serviceDefinition.endpoints.models.method,
+      url: requestUrl,
+    })
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(buildApiUrl(apiEndpoint, serviceDefinition.endpoints.models.path), {
+      const response = await fetch(requestUrl, {
         method: serviceDefinition.endpoints.models.method,
         headers: requestHeaders,
       })
@@ -58,39 +67,19 @@ export function useOllamaModels(
       const data = await response.json()
       const rawList = getValueAtPath(data, serviceDefinition.endpoints.models.responseListPath || 'models')
       const modelList: OllamaModel[] = Array.isArray(rawList) ? (rawList as OllamaModel[]) : []
+      console.log('[useOllamaModels] Model fetch succeeded', {
+        serviceId: serviceDefinition.id,
+        status: response.status,
+        modelCount: modelList.length,
+      })
       setModels(modelList)
       setIsConnected(true)
       setError(null)
-      setPendingPulls(current => {
-        const next = { ...current }
-        const availableModels = new Set(modelList.map(model => model.name))
-
-        for (const modelName of Object.keys(current)) {
-          if (!availableModels.has(modelName)) {
-            continue
-          }
-
-          if (current[modelName] === 'done') {
-            continue
-          }
-
-          next[modelName] = 'done'
-
-          if (!doneTimeoutsRef.current[modelName]) {
-            doneTimeoutsRef.current[modelName] = window.setTimeout(() => {
-              setPendingPulls(latest => {
-                const updated = { ...latest }
-                delete updated[modelName]
-                return updated
-              })
-              delete doneTimeoutsRef.current[modelName]
-            }, 2500)
-          }
-        }
-
-        return next
-      })
     } catch (err) {
+      console.error('[useOllamaModels] Model fetch failed', {
+        serviceId: serviceDefinition.id,
+        message: err instanceof Error ? err.message : String(err),
+      })
       setError(err instanceof Error ? err.message : 'Failed to connect')
       setModels([])
       setIsConnected(false)
@@ -107,74 +96,30 @@ export function useOllamaModels(
     return () => window.clearTimeout(timeoutId)
   }, [fetchModels])
 
-  useEffect(() => {
-    const doneTimeouts = doneTimeoutsRef.current
-
-    return () => {
-      for (const timeoutId of Object.values(doneTimeouts)) {
-        window.clearTimeout(timeoutId)
-      }
-    }
-  }, [])
-
-  const pullModel = (modelName: string) => {
-    const model = modelName.trim()
-    const pullEndpoint = serviceDefinition?.endpoints.pull
-    if (!apiEndpoint || !model || !pullEndpoint) {
-      return
-    }
-
-    setMutationError(null)
-    setPendingPulls(current => ({
-      ...current,
-      [model]: 'downloading',
-    }))
-    setModels(current =>
-      current.some(existingModel => existingModel.name === model)
-        ? current
-        : [...current, { name: model, modified_at: '', size: 0, status: 'downloading' }]
-    )
-
-    void (async () => {
-      try {
-        const response = await fetch(buildApiUrl(apiEndpoint, pullEndpoint.path), {
-          method: pullEndpoint.method,
-          headers: requestHeaders,
-          body: JSON.stringify(
-            renderTemplateValue(pullEndpoint.bodyTemplate ?? {}, {
-              modelName: model,
-            })
-          ),
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to pull model: ${response.statusText}`)
-        }
-
-        await fetchModels()
-      } catch (err) {
-        setMutationError(err instanceof Error ? err.message : 'Failed to pull model')
-        setPendingPulls(current => {
-          const next = { ...current }
-          delete next[model]
-          return next
-        })
-        setModels(current => current.filter(existingModel => existingModel.name !== model || !existingModel.status))
-      }
-    })()
-  }
-
   const deleteModel = async (modelName: string) => {
     const model = modelName.trim()
     if (!apiEndpoint || !model || !serviceDefinition?.endpoints.delete) {
+      console.log('[useOllamaModels] Skipping delete', {
+        hasApiEndpoint: Boolean(apiEndpoint),
+        model,
+        hasDeleteEndpoint: Boolean(serviceDefinition?.endpoints.delete),
+        serviceId: serviceDefinition?.id ?? null,
+      })
       return
     }
 
+    const requestUrl = buildApiUrl(apiEndpoint, serviceDefinition.endpoints.delete.path)
+    console.log('[useOllamaModels] Deleting model', {
+      serviceId: serviceDefinition.id,
+      model,
+      method: serviceDefinition.endpoints.delete.method,
+      url: requestUrl,
+    })
     setIsDeleting(true)
     setMutationError(null)
 
     try {
-      const response = await fetch(buildApiUrl(apiEndpoint, serviceDefinition.endpoints.delete.path), {
+      const response = await fetch(requestUrl, {
         method: serviceDefinition.endpoints.delete.method,
         headers: requestHeaders,
         body: JSON.stringify(
@@ -188,8 +133,18 @@ export function useOllamaModels(
         throw new Error(`Failed to delete model: ${response.statusText}`)
       }
 
+      console.log('[useOllamaModels] Delete succeeded', {
+        serviceId: serviceDefinition.id,
+        model,
+        status: response.status,
+      })
       await fetchModels()
     } catch (err) {
+      console.error('[useOllamaModels] Delete failed', {
+        serviceId: serviceDefinition.id,
+        model,
+        message: err instanceof Error ? err.message : String(err),
+      })
       setMutationError(err instanceof Error ? err.message : 'Failed to delete model')
       throw err
     } finally {
@@ -197,45 +152,70 @@ export function useOllamaModels(
     }
   }
 
-  const visibleModels = useMemo(() => {
-    const seen = new Set<string>()
-    const mergedModels: OllamaModel[] = []
-
-    for (const model of models) {
-      if (seen.has(model.name)) {
-        continue
-      }
-
-      seen.add(model.name)
-      mergedModels.push({
-        ...model,
-        status: pendingPulls[model.name] ?? model.status,
+  const pullModel = async (modelName: string) => {
+    const model = modelName.trim()
+    if (!apiEndpoint || !model || !serviceDefinition?.endpoints.pull) {
+      console.log('[useOllamaModels] Skipping pull', {
+        hasApiEndpoint: Boolean(apiEndpoint),
+        model,
+        hasPullEndpoint: Boolean(serviceDefinition?.endpoints.pull),
+        serviceId: serviceDefinition?.id ?? null,
       })
+      return
     }
 
-    for (const [modelName, status] of Object.entries(pendingPulls)) {
-      if (seen.has(modelName)) {
-        continue
+    const requestUrl = buildApiUrl(apiEndpoint, serviceDefinition.endpoints.pull.path)
+    console.log('[useOllamaModels] Pulling model', {
+      serviceId: serviceDefinition.id,
+      model,
+      method: serviceDefinition.endpoints.pull.method,
+      url: requestUrl,
+    })
+    setIsPulling(true)
+    setMutationError(null)
+
+    try {
+      const response = await fetch(requestUrl, {
+        method: serviceDefinition.endpoints.pull.method,
+        headers: requestHeaders,
+        body: JSON.stringify(
+          renderTemplateValue(serviceDefinition.endpoints.pull.bodyTemplate ?? {}, {
+            modelName: model,
+          })
+        ),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to pull model: ${response.statusText}`)
       }
 
-      seen.add(modelName)
-      mergedModels.push({
-        name: modelName,
-        modified_at: '',
-        size: 0,
-        status,
+      console.log('[useOllamaModels] Pull succeeded', {
+        serviceId: serviceDefinition.id,
+        model,
+        status: response.status,
       })
+      await fetchModels()
+    } catch (err) {
+      console.error('[useOllamaModels] Pull failed', {
+        serviceId: serviceDefinition.id,
+        model,
+        message: err instanceof Error ? err.message : String(err),
+      })
+      setMutationError(err instanceof Error ? err.message : 'Failed to pull model')
+      throw err
+    } finally {
+      setIsPulling(false)
     }
-
-    return mergedModels
-  }, [models, pendingPulls])
+  }
 
   return {
-    models: visibleModels,
+    models,
     loading,
     error,
     isConnected,
-    isMutating: isDeleting,
+    isDeleting,
+    isPulling,
+    isMutating: isDeleting || isPulling,
     mutationError,
     refresh: fetchModels,
     pullModel,

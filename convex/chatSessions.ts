@@ -23,6 +23,7 @@ interface ChatSessionDoc {
   createdAt: string
   updatedAt: string
   messageCount: number
+  shareToken?: string
 }
 
 async function requireIdentity(ctx: { auth: { getUserIdentity: () => Promise<Identity | null> } }) {
@@ -183,5 +184,60 @@ export const deleteForCurrentUser = mutationGeneric({
     })
 
     return null
+  },
+})
+
+export const generateShareToken = mutationGeneric({
+  args: {
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx)
+    const session = await getOwnedSession(ctx, user._id, args.sessionId)
+
+    if (session.shareToken) {
+      return { shareToken: session.shareToken }
+    }
+
+    const shareToken = crypto.randomUUID()
+    await ctx.db.patch(session._id, { shareToken })
+
+    return { shareToken }
+  },
+})
+
+export const revokeShareToken = mutationGeneric({
+  args: {
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx)
+    const session = await getOwnedSession(ctx, user._id, args.sessionId)
+
+    await ctx.db.patch(session._id, { shareToken: undefined })
+
+    return null
+  },
+})
+
+export const getByShareToken = queryGeneric({
+  args: {
+    shareToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query('chatSessions')
+      .withIndex('by_share_token', query => query.eq('shareToken', args.shareToken))
+      .unique()
+
+    if (!session) {
+      return null
+    }
+
+    return {
+      title: session.title,
+      transcriptSessionId: session.transcriptSessionId,
+      createdAt: session.createdAt,
+    }
   },
 })

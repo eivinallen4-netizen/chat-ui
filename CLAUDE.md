@@ -28,6 +28,9 @@ NEVER read, edit, or create the following files under any circumstances:
 | `components/sidebar.tsx` | Session list (desktop persistent / mobile overlay) |
 | `components/settings-panel.tsx` | Service/endpoint/auth/system-prompt config |
 | `components/chat-header.tsx` | Top bar: title, service name, connection status |
+| `components/model-autocomplete.tsx` | Autocomplete for adding Ollama models; fetches from `/api/ollama-library` |
+| `components/model-discovery.tsx` | Model discovery UI with search, 4-column browsing grid, and detail panel |
+| `components/model-library-dialog.tsx` | Main-menu popup that loads the Ollama library and renders the discovery browser |
 | `app/layout.tsx` | Root layout: ClerkProvider + AppProviders + GTM |
 
 ## State / Data Flow (no global state library)
@@ -44,6 +47,7 @@ NEVER read, edit, or create the following files under any circumstances:
 | `app/api/service-definitions/route.ts` | GET — returns parsed service definitions |
 | `app/api/chat-transcripts/[sessionId]/route.ts` | GET/PUT/DELETE — Turso transcript CRUD; PUT enforces 2000-char limit |
 | `app/api/proxy/[...path]/route.ts` | Reverse proxy to avoid CORS on local AI backends |
+| `app/api/ollama-library/route.ts` | GET — scrapes ollama.com/library and caches in Convex (24h TTL) |
 
 ## Env Vars
 | Var | Notes |
@@ -59,3 +63,7 @@ NEVER read, edit, or create the following files under any circumstances:
 - Basic plan: 8 chats, 2000 char/message, ads event every 4 chats
 
 ## Update Claude.md Every Update
+
+## Recent Updates
+- Added a development-only icon button beside `Add Model` to force-refresh the Ollama library cache.
+- `/api/ollama-library` now supports `?refresh=1` to bypass the cached Convex response and fetch upstream data with `cache: 'no-store'`.

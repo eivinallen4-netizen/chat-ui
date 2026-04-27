@@ -35,6 +35,7 @@ export function Sidebar({
   onMobileClose,
   onFeaturesClick,
 }: SidebarProps) {
+
   const formatRelativeDate = (isoString: string) => {
     const date = new Date(isoString)
     const now = new Date()
@@ -65,7 +66,7 @@ export function Sidebar({
       {/* Sidebar panel */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex h-dvh w-[280px] flex-col bg-sidebar',
+          'fixed inset-y-0 left-0 z-40 flex h-[100dvh] max-h-[100dvh] w-[280px] flex-col overflow-hidden bg-sidebar',
           'transition-transform duration-300 ease-out will-change-transform',
           'md:relative md:translate-x-0 md:shadow-none md:shrink-0 md:border-r md:border-border md:h-full',
           isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
@@ -104,75 +105,77 @@ export function Sidebar({
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto py-2">
-          {sessions.length === 0 && (
-            <p className="text-sm text-muted-foreground px-4 py-3">No chats yet</p>
-          )}
-          {sessions.map(session => (
-            <div
-              key={session.id}
-              className={cn(
-                'group flex items-start justify-between px-4 py-3.5 min-h-[52px] cursor-pointer my-0.5',
-                'border-l-[3px] border-primary/30',
-                'hover:bg-accent/60 transition-colors',
-                activeId === session.id && 'bg-accent/80 shadow-sm border-primary'
-              )}
-            >
-              <div onClick={() => { onLoad(session.id); onMobileClose() }} className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{session.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {formatRelativeDate(session.updatedAt)}
-                </p>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <div className="flex-1 py-2">
+            {sessions.length === 0 && (
+              <p className="px-4 py-3 text-sm text-muted-foreground">No chats yet</p>
+            )}
+            {sessions.map(session => (
+              <div
+                key={session.id}
+                className={cn(
+                  'group my-0.5 flex min-h-[52px] items-start justify-between px-4 py-3.5',
+                  'cursor-pointer border-l-[3px] border-primary/30',
+                  'transition-colors hover:bg-accent/60',
+                  activeId === session.id && 'border-primary bg-accent/80 shadow-sm'
+                )}
+              >
+                <div onClick={() => { onLoad(session.id); onMobileClose() }} className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-medium">{session.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {formatRelativeDate(session.updatedAt)}
+                  </p>
+                </div>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    onDelete(session.id)
+                  }}
+                  className="ml-2 flex min-h-[36px] min-w-[36px] flex-shrink-0 items-center justify-center rounded-lg p-1.5 text-muted-foreground opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <button
-                onClick={e => {
-                  e.stopPropagation()
-                  onDelete(session.id)
-                }}
-                className="md:opacity-0 md:group-hover:opacity-100 opacity-100 text-muted-foreground hover:text-destructive transition-opacity ml-2 flex-shrink-0 p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="mt-auto border-t border-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
-          {dataMode === 'authenticated' && currentUser ? (
-            <>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {currentUser.planTier} plan
-              </p>
-              <p className="mt-1 text-sm text-foreground">
-                {currentUser.persistedChatCount}/8 chats used
-              </p>
-              <button
-                onClick={onFeaturesClick}
-                className="mt-2 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
-              >
-                Features
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Guest mode</p>
-              <p className="mt-1 text-sm text-foreground">
-                {sessions.length}/{GUEST_MAX_CHATS} chats used
-              </p>
-              <button
-                onClick={onFeaturesClick}
-                className="mt-2 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
-              >
-                Features
-              </button>
-              <SignInButton mode="modal">
-                <Button type="button" size="default" variant="outline" className="mt-3 w-full">
-                  Sign In to Sync
-                </Button>
-              </SignInButton>
-            </>
-          )}
-          {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+          <div className="border-t border-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+            {dataMode === 'authenticated' && currentUser ? (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {currentUser.planTier} plan
+                </p>
+                <p className="mt-1 text-sm text-foreground">
+                  {currentUser.persistedChatCount}/8 chats used
+                </p>
+                <button
+                  onClick={onFeaturesClick}
+                  className="mt-2 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+                >
+                  Features
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Guest mode</p>
+                <p className="mt-1 text-sm text-foreground">
+                  {sessions.length}/{GUEST_MAX_CHATS} chats used
+                </p>
+                <button
+                  onClick={onFeaturesClick}
+                  className="mt-2 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+                >
+                  Features
+                </button>
+                <SignInButton mode="modal">
+                  <Button type="button" size="default" variant="outline" className="mt-3 w-full">
+                    Sign In to Sync
+                  </Button>
+                </SignInButton>
+              </>
+            )}
+            {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+          </div>
         </div>
       </aside>
     </>

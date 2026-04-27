@@ -27,7 +27,23 @@ export default defineSchema({
     messageCount: v.number(),
     transcriptStatus: v.union(v.literal('empty'), v.literal('ready')),
     transcriptSessionId: v.string(),
+    shareToken: v.optional(v.string()),
     createdAt: v.string(),
     updatedAt: v.string(),
-  }).index('by_owner_user_id', ['ownerUserId']),
+  }).index('by_owner_user_id', ['ownerUserId']).index('by_share_token', ['shareToken']),
+  ollamaModelCache: defineTable({
+    models: v.array(
+      v.object({
+        name: v.string(),
+        description: v.union(v.string(), v.null()),
+        tags: v.array(v.string()),
+        sizes: v.array(v.string()),
+        pulls: v.optional(v.string()),
+        tagCount: v.optional(v.string()),
+        updated: v.optional(v.string()),
+        url: v.string(),
+      })
+    ),
+    scrapedAt: v.number(),
+  }),
 })

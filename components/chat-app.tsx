@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useMutation } from 'convex/react'
 import { useSettings } from '@/hooks/use-settings'
 import { useAuth } from '@clerk/nextjs'
 import { BASIC_PLAN_MAX_MESSAGE_CHARS } from '@/lib/app-plan'
@@ -10,12 +11,15 @@ import { useLocalChatHistory } from '@/hooks/use-local-chat-history'
 import { useAuthenticatedChatHistory } from '@/hooks/use-authenticated-chat-history'
 import { useRealChat } from '@/hooks/use-real-chat'
 import { useOllamaModels } from '@/hooks/use-ollama-models'
+import { api } from '@/convex/_generated/api'
 import { Sidebar } from './sidebar'
 import { ChatHeader } from './chat-header'
 import { ChatPane } from './chat-pane'
 import { SettingsPanel } from './settings-panel'
 import { LoadingDots } from './loading-dots'
 import { OnboardingPanel } from './onboarding-panel'
+import { ModelLibraryDialog } from './model-library-dialog'
+import { ShareChatDialog } from './share-chat-dialog'
 
 export default function ChatApp() {
   const hasConvex = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL)
@@ -23,7 +27,16 @@ export default function ChatApp() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
   const [onboardingManuallyOpen, setOnboardingManuallyOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [modelLibraryOpen, setModelLibraryOpen] = useState(false)
+  const [modelLibraryRefreshKey, setModelLibraryRefreshKey] = useState(0)
+  const [pullingModelName, setPullingModelName] = useState<string | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [shareDialogSessionId, setShareDialogSessionId] = useState<string | null>(null)
+  const [shareToken, setShareToken] = useState<string | null>(null)
+
+  const generateShareTokenMutation = useMutation(api.chatSessions.generateShareToken)
+  const revokeShareTokenMutation = useMutation(api.chatSessions.revokeShareToken)
   const {
     services,
     activeService,
@@ -49,7 +62,7 @@ export default function ChatApp() {
     loading: modelsLoading,
     error: modelsError,
     isConnected,
-    isMutating: modelsMutating,
+    isDeleting: modelsDeleting,
     mutationError,
     refresh: refreshModels,
     pullModel,
@@ -133,9 +146,48 @@ export default function ChatApp() {
     void history.deleteSession(id)
   }
 
-  const handleAddModel = async (modelName: string) => {
-    pullModel(modelName)
-    setSelectedModel(modelName)
+  const handleShareSession = async () => {
+    if (!activeId) return
+
+    if (!hasConvex || dataMode !== 'authenticated') {
+      if (dataMode === 'guest') {
+        const session = sessions.find(s => s.id === activeId)
+        if (session) {
+          const messages = history.sessions.find(s => s.id === activeId)?.messages || []
+          const text = messages
+            .map(m => {
+              const parts = m.parts.filter(p => p.type === 'text')
+              const content = parts.map(p => ('text' in p ? p.text : '')).join('')
+              return `${m.role.toUpperCase()}: ${content}`
+            })
+            .join('\n\n')
+          await navigator.clipboard.writeText(text || 'Empty chat')
+        }
+      }
+      return
+    }
+
+    try {
+      setShareDialogSessionId(activeId)
+      const result = await generateShareTokenMutation({ sessionId: activeId })
+      setShareToken(result.shareToken)
+      setShareDialogOpen(true)
+    } catch (error) {
+      console.error('Error sharing session:', error)
+    }
+  }
+
+  const handleRevokeShare = async () => {
+    if (!shareDialogSessionId) return
+
+    try {
+      await revokeShareTokenMutation({ sessionId: shareDialogSessionId })
+      setShareToken(null)
+      setShareDialogOpen(false)
+      setShareDialogSessionId(null)
+    } catch (error) {
+      console.error('Error revoking share:', error)
+    }
   }
 
   const handleDeleteModels = async (modelNames: string[]) => {
@@ -145,6 +197,37 @@ export default function ChatApp() {
 
     if (modelNames.includes(selectedModel)) {
       setSelectedModel('')
+    }
+  }
+
+  const handleRefreshModelLibrary = async () => {
+    try {
+      const response = await fetch('/api/ollama-library?refresh=1', {
+        cache: 'no-store',
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to refresh model library: ${response.status}`)
+      }
+
+      setModelLibraryRefreshKey(current => current + 1)
+    } catch (error) {
+      console.error('[ChatApp] Failed to refresh model library cache', error)
+    }
+  }
+
+  const handlePullModel = async (modelName: string) => {
+    try {
+      setPullingModelName(modelName)
+      await pullModel(modelName)
+      setSelectedModel(modelName)
+    } catch (error) {
+      console.error('[ChatApp] Failed to pull model from library', {
+        modelName,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      setPullingModelName(null)
     }
   }
 
@@ -196,14 +279,17 @@ export default function ChatApp() {
               onModelChange={setSelectedModel}
               loading={modelsLoading}
               isConnected={isConnected}
-              isMutating={modelsMutating}
+              isDeleting={modelsDeleting}
               error={mutationError ?? modelsError}
               onRefresh={refreshModels}
-              onAddModel={handleAddModel}
               onDeleteModels={handleDeleteModels}
+              pullingModelName={pullingModelName}
               messageLimit={messageLimit}
               validationError={validationError ?? history.error}
               onValidationErrorChange={setValidationError}
+              onShare={() => void handleShareSession()}
+              onModelLibraryOpen={() => setModelLibraryOpen(true)}
+              onModelLibraryRefresh={() => void handleRefreshModelLibrary()}
             />
           </div>
         ) : (
@@ -227,12 +313,29 @@ export default function ChatApp() {
         onAuthTokenChange={setAuthToken}
         onSystemPromptChange={setSystemPrompt}
       />
+      <ModelLibraryDialog
+        open={modelLibraryOpen}
+        onOpenChange={setModelLibraryOpen}
+        refreshKey={modelLibraryRefreshKey}
+        onPullModel={handlePullModel}
+        pullingModelName={pullingModelName}
+      />
       <OnboardingPanel
         open={onboardingOpen}
         onClose={() => {
           setOnboardingDismissed(true)
           setOnboardingManuallyOpen(false)
         }}
+      />
+      <ShareChatDialog
+        open={shareDialogOpen}
+        shareToken={shareToken}
+        onClose={() => {
+          setShareDialogOpen(false)
+          setShareDialogSessionId(null)
+          setShareToken(null)
+        }}
+        onRevoke={handleRevokeShare}
       />
     </div>
   )

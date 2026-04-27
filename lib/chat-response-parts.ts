@@ -1,6 +1,6 @@
 import type { Message } from '@llamaindex/chat-ui'
 
-type MessagePart = Message['parts'][number]
+export type MessagePart = Message['parts'][number]
 
 interface FilePayload {
   filename?: string
@@ -22,7 +22,7 @@ interface ResponsePayload {
   parts: MessagePart[]
 }
 
-function isTextPart(part: MessagePart): part is MessagePart & { text: string } {
+export function isTextPart(part: MessagePart): part is MessagePart & { text: string } {
   return part.type === 'text' && 'text' in part && typeof part.text === 'string'
 }
 
