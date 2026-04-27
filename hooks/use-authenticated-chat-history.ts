@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { Message } from '@llamaindex/chat-ui'
-import { useMutation, useQuery } from 'convex/react'
+import { useMutation, useQuery, useConvexAuth } from 'convex/react'
 import { BASIC_PLAN_MAX_MESSAGE_CHARS } from '@/lib/app-plan'
 import { getFirstUserMessageTitle } from '@/lib/chat-message-utils'
 import { convexApi } from '@/lib/convex-api'
@@ -50,6 +50,7 @@ async function removeTranscript(sessionId: string, userId: string) {
 }
 
 export function useAuthenticatedChatHistory(enabled: boolean) {
+  const { isAuthenticated } = useConvexAuth()
   const currentUser = useQuery(convexApi.users.getCurrentUser, enabled ? {} : 'skip') as AppUser | null | undefined
   const sessionsQuery = useQuery(
     convexApi.chatSessions.listByCurrentUser,
@@ -67,12 +68,12 @@ export function useAuthenticatedChatHistory(enabled: boolean) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || !isAuthenticated) return
 
     void bootstrapCurrentUser().catch(() => {
       setError('Failed to initialize your account.')
     })
-  }, [bootstrapCurrentUser, enabled])
+  }, [bootstrapCurrentUser, enabled, isAuthenticated])
 
   const resolvedActiveId =
     activeId && sessionsQuery?.some(session => session.id === activeId)
